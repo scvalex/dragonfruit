@@ -1,0 +1,28 @@
+Name:           dragonfruit
+Version:        0.0.1
+Cabal-Version:  >= 1.6
+License:        GPL-3
+License-File:   LICENSE
+Stability:      experimental
+Author:         Alexandru Scvortov <scvalex@gmail.com>
+Maintainer:     scvalex@gmail.com
+Homepage:       https://github.com/scvalex/dragonfruit
+Category:       Graphics
+Synopsis:       Suite of computer-generated graphics programs
+Build-type:     Simple
+Description:
+        DragonFruit is a suite of computer-generated graphics programs.
+        .
+        See the README.md file for details.
+
+Extra-source-files:     Makefile
+
+Data-files:             README.md, NEWS.md
+
+Source-repository head
+  Type:                 git
+  Location:             git://github.com/scvalex/dragonfruit.git
+
+Executable dragonfruit
+  Build-Depends:        base >= 4 && <5, cairo
+  Main-Is:              Main.hs
