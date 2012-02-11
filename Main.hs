@@ -54,7 +54,7 @@ buildingC width height = do
   setupCanvas width height
   let params = SkylineParameters { getMutationRate = 0.1 }
   b <- spawn params :: Render Building
-  manifest b params
+  visualize b params
   return ()
 
 setupCanvas :: Int -> Int -> Render ()

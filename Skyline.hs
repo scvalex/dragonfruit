@@ -22,7 +22,7 @@ data Building = Building { getDimensions :: (Double, Double)
                 deriving ( Data, Typeable )
 
 instance Genotype Building SkylineParameters Render where
-    manifest b _ = do
+    visualize b _ = do
       uncurry4 setSourceRGBA (getFacade b)
       uncurry2 (rectangle (getPositionOffset b) 0.8) (getDimensions b)
       fill
