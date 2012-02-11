@@ -3,6 +3,10 @@ module Main where
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
 
+import Instances
+import Types
+import Skyline
+
 main :: IO ()
 main = do
   initGUI
@@ -42,12 +46,16 @@ updateCanvas :: DrawingArea -> IO Bool
 updateCanvas canvas = do
   win <- widgetGetDrawWindow canvas
   (width, height) <- widgetGetSize canvas
-  renderWithDrawable win (example width height)
+  renderWithDrawable win (buildingC width height)
   return True
 
-example :: Int -> Int -> Render ()
-example width height = do
+buildingC :: Int -> Int -> Render ()
+buildingC width height = do
   setupCanvas width height
+  let params = SkylineParameters { getMutationRate = 0.1 }
+  b <- spawn params :: Render Building
+  manifest b params
+  return ()
 
 setupCanvas :: Int -> Int -> Render ()
 setupCanvas wWidth wHeight = do
