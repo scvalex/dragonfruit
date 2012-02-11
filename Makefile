@@ -1,8 +1,11 @@
 GHC := ghc -Wall -Werror
 
-.PHONY: all build dist install clean doc
+.PHONY: all run build dist install clean doc
 
 all: build
+
+run: build
+	dist/build/dragonfruit/dragonfruit
 
 build: dist/setup-config
 	cabal build
