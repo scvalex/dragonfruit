@@ -43,7 +43,7 @@ main = do
   set canvasF [containerChild := canvas]
   set evoBox [containerChild := canvasF]
   set evoBox [boxChildPacking canvasF := PackNatural]
-  widgetSetSizeRequest canvas 480 200
+  widgetSetSizeRequest canvas 200 100
   onExpose canvas $ const (updateCanvas canvas stateMV)
 
   window `on` keyPressEvent $ tryEvent $ do

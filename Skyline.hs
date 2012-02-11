@@ -22,7 +22,7 @@ instance Genotype Skyline SkylineParameters Render where
       forM_ (getBuildings sky) (visualize params)
 
     spawn params = do
-      let genD = liftIO (randomRIO (0.0, 1.0))
+      let genD = liftIO (randomRIO (0.1, 1.0))
       rgba <- (,,,) <$> genD <*> genD <*> genD <*> genD
       bs <- replicateM 3 (spawn params)
       return $ Skyline bs rgba
@@ -47,7 +47,7 @@ instance Genotype Building SkylineParameters Render where
       fill
 
     spawn _ = do
-      let gen = liftIO (randomRIO (0.0, 1.0))
+      let gen = liftIO (randomRIO (0.1, 1.0))
       dimensions <- (,) <$> gen <*> gen
       rgba <- (,,,) <$> gen <*> gen <*> gen <*> gen
       pos <- gen
@@ -60,7 +60,7 @@ instance Genotype Building SkylineParameters Render where
 mutateDouble :: (MonadIO m) => Double -> Double -> m Double
 mutateDouble mutRate d = do
   r <- liftIO $ randomRIO (0.0, 1.0)
-  d' <- liftIO $ randomRIO (0.0, 1.0)
+  d' <- liftIO $ randomRIO (0.1, 1.0)
   return $ if r > mutRate then d else d'
 
 uncurry2 :: (a -> b -> c) -> (a, b) -> c
