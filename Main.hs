@@ -1,8 +1,6 @@
 module Main where
 
-import Control.Monad
 import Graphics.Rendering.Cairo
-import qualified Graphics.Rendering.Cairo.Matrix as M
 import Graphics.UI.Gtk
 
 main :: IO ()
@@ -58,11 +56,10 @@ updateCanvas canvas = do
 
 example :: Int -> Int -> Render ()
 example width height = do
-  prologue width height
+  setupCanvas width height
 
--- Set up stuff
-prologue :: Int -> Int -> Render ()
-prologue wWidth wHeight = do
+setupCanvas :: Int -> Int -> Render ()
+setupCanvas wWidth wHeight = do
   let width   = 10
       height  = 10
       xmax    = width / 2
@@ -72,38 +69,23 @@ prologue wWidth wHeight = do
       scaleX  = realToFrac wWidth  / width
       scaleY  = realToFrac wHeight / height
 
-  -- style and color
   setLineCap LineCapRound
   setLineJoin LineJoinRound
-  setLineWidth $ 1 / max scaleX scaleY
-  setSourceRGBA 0.5 0.7 0.5 0.5
+  setLineWidth $ 4 / max scaleX scaleY
 
   -- Set up user coordinates
   scale scaleX scaleY
-  -- center origin
+  -- Centre origin
   translate (width / 2) (height / 2)
-  -- positive y-axis upwards
-  let flipY = M.Matrix 1 0 0 (-1) 0 0
-  transform flipY
 
-  grid xmin xmax ymin ymax
+  -- white canvas
+  setSourceRGBA 1.0 1.0 1.0 1.0
+  paint
 
-grid :: Double -> Double -> Double -> Double -> Render ()
-grid xmin xmax ymin ymax =
   keepState $ do
-  setSourceRGBA 0 0 0 0.7
-  -- axes
-  moveTo 0 ymin; lineTo 0 ymax; stroke
-  moveTo xmin 0; lineTo xmax 0; stroke
-  -- grid
-  setDash [0.01, 0.99] 0
-  forM [xmin .. xmax] $ \ x ->
-      do moveTo x ymin
-         lineTo x ymax
-         stroke
+    setSourceRGBA 0.0 0.0 0.0 0.4
+    rectangle (xmin + (width * 0.1)) (ymin + (height * 0.1)) (width * 0.8) (height * 0.8)
+    stroke
 
 keepState :: Render t -> Render ()
-keepState render = do
-  save
-  _ <- render
-  restore
+keepState render = save >> render >> restore
