@@ -8,7 +8,7 @@ import Instances ()
 import Types
 import Skyline
 
-type State = (Building, SkylineParameters)
+type State = (Skyline, SkylineParameters)
 
 main :: IO ()
 main = do
@@ -35,8 +35,8 @@ main = do
   set evoBox [containerBorderWidth := 5]
 
   let params = SkylineParameters { getMutationRate = 0.05 }
-  b <- spawn params
-  state <- newMVar (b, params)
+  sky <- spawn params
+  state <- newMVar (sky, params)
 
   canvas <- drawingAreaNew
   canvasF <- frameNew
@@ -65,20 +65,16 @@ updateCanvas canvas state = do
   return True
 
 buildingC :: Int -> Int -> State -> Render State
-buildingC width height (building, params) = do
+buildingC width height (sky, params) = do
   setupCanvas width height
-  building' <- mutate building params
-  visualize building params
-  return (building', params)
+  sky' <- mutate params sky
+  visualize params sky
+  return (sky', params)
 
 setupCanvas :: Int -> Int -> Render ()
 setupCanvas wWidth wHeight = do
   let width   = 10
       height  = 10
-      xmax    = width / 2
-      xmin    = - xmax
-      ymax    = height / 2
-      ymin    = - ymax
       scaleX  = realToFrac wWidth  / width
       scaleY  = realToFrac wHeight / height
 
@@ -94,11 +90,6 @@ setupCanvas wWidth wHeight = do
   -- white canvas
   setSourceRGBA 1.0 1.0 1.0 1.0
   paint
-
-  keepState $ do
-    setSourceRGBA 0.0 0.0 0.0 0.4
-    rectangle (xmin + (width * 0.1)) (ymin + (height * 0.1)) (width * 0.8) (height * 0.8)
-    stroke
 
 keepState :: Render t -> Render ()
 keepState render = save >> render >> restore

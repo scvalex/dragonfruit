@@ -8,8 +8,8 @@ import Control.Applicative
 import Control.Monad.IO.Class
 
 class (Monad f) => Genotype g p f | g -> f where
-    visualize :: g -> p -> f ()
+    visualize :: p -> g -> f ()
     spawn :: (MonadIO m, Applicative m) => p -> m g
-    mutate :: (MonadIO m, Applicative m) => g -> p -> m g
+    mutate :: (MonadIO m, Applicative m) => p -> g -> m g
 
 type RGBA = (Double, Double, Double, Double)

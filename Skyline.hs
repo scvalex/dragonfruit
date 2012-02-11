@@ -5,6 +5,7 @@ module Skyline (
     ) where
 
 import Control.Applicative
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Generics
 import Graphics.Rendering.Cairo
@@ -14,6 +15,24 @@ import Types
 data Skyline = Skyline { getBuildings :: [Building]
                        , getBackground :: RGBA }
 
+instance Genotype Skyline SkylineParameters Render where
+    visualize params sky = do
+      uncurry4 setSourceRGBA (getBackground sky)
+      paint
+      forM_ (getBuildings sky) (visualize params)
+
+    spawn params = do
+      let genD = liftIO (randomRIO (0.0, 1.0))
+      rgba <- (,,,) <$> genD <*> genD <*> genD <*> genD
+      bs <- replicateM 3 (spawn params)
+      return $ Skyline bs rgba
+
+    mutate params sky = do
+      let mutRate = getMutationRate params
+      bs' <- mapM (mutate params) (getBuildings sky)
+      rgba' <- everywhereM (mkM (mutateDouble mutRate)) (getBackground sky)
+      return sky { getBuildings = bs', getBackground = rgba' }
+
 data SkylineParameters = SkylineParameters { getMutationRate :: Double }
 
 data Building = Building { getDimensions :: (Double, Double)
@@ -22,7 +41,7 @@ data Building = Building { getDimensions :: (Double, Double)
                 deriving ( Data, Typeable )
 
 instance Genotype Building SkylineParameters Render where
-    visualize b _ = do
+    visualize _ b = do
       uncurry4 setSourceRGBA (getFacade b)
       uncurry2 (rectangle (getPositionOffset b) 0.8) (getDimensions b)
       fill
@@ -34,7 +53,7 @@ instance Genotype Building SkylineParameters Render where
       pos <- gen
       return $ Building dimensions rgba pos
 
-    mutate b params = do
+    mutate params b = do
       let mutRate = getMutationRate params
       everywhereM (mkM (mutateDouble mutRate)) b
 
