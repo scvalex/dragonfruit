@@ -34,15 +34,6 @@ main = do
   widgetSetSizeRequest canvas 480 480
   onExpose canvas $ const (updateCanvas canvas)
 
-  hButtonBox <- hButtonBoxNew
-  set evoBox [containerChild := hButtonBox]
-
-  bts <- mapM buttonNewWithLabel ["One", "Two", "Three"]
-
-  set hButtonBox [containerChild := button | button <- bts ]
-  set hButtonBox [ buttonBoxLayoutStyle := ButtonboxStart
-                 , buttonBoxChildSecondary (bts !! 2) := True ]
-
   widgetShowAll window
 
   mainGUI
