@@ -1,11 +1,14 @@
 module Main where
 
+import Control.Concurrent.MVar
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
 
 import Instances ()
 import Types
 import Skyline
+
+type State = (Building, SkylineParameters)
 
 main :: IO ()
 main = do
@@ -31,13 +34,17 @@ main = do
   scrolledWindowAddWithViewport mainScroller evoBox
   set evoBox [containerBorderWidth := 5]
 
+  let params = SkylineParameters { getMutationRate = 0.05 }
+  b <- spawn params
+  state <- newMVar (b, params)
+
   canvas <- drawingAreaNew
   canvasF <- frameNew
   set canvasF [containerChild := canvas]
   set evoBox [containerChild := canvasF]
   set evoBox [boxChildPacking canvasF := PackNatural]
   widgetSetSizeRequest canvas 480 200
-  onExpose canvas $ const (updateCanvas canvas)
+  onExpose canvas $ const (updateCanvas canvas state)
 
   window `on` keyPressEvent $ tryEvent $ do
          "space" <- eventKeyName
@@ -49,20 +56,20 @@ main = do
 
   mainGUI
 
-updateCanvas :: DrawingArea -> IO Bool
-updateCanvas canvas = do
+updateCanvas :: DrawingArea -> MVar State -> IO Bool
+updateCanvas canvas state = do
   win <- widgetGetDrawWindow canvas
   (width, height) <- widgetGetSize canvas
-  renderWithDrawable win (buildingC width height)
+  modifyMVar_ state $ \s ->
+      renderWithDrawable win (buildingC width height s)
   return True
 
-buildingC :: Int -> Int -> Render ()
-buildingC width height = do
+buildingC :: Int -> Int -> State -> Render State
+buildingC width height (building, params) = do
   setupCanvas width height
-  let params = SkylineParameters { getMutationRate = 0.1 }
-  b <- spawn params :: Render Building
-  visualize b params
-  return ()
+  building' <- mutate building params
+  visualize building params
+  return (building', params)
 
 setupCanvas :: Int -> Int -> Render ()
 setupCanvas wWidth wHeight = do
