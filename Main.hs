@@ -3,7 +3,7 @@ module Main where
 import Graphics.Rendering.Cairo
 import Graphics.UI.Gtk
 
-import Instances
+import Instances ()
 import Types
 import Skyline
 
@@ -35,8 +35,15 @@ main = do
   canvasF <- frameNew
   set canvasF [containerChild := canvas]
   set evoBox [containerChild := canvasF]
-  widgetSetSizeRequest canvas 480 480
+  set evoBox [boxChildPacking canvasF := PackNatural]
+  widgetSetSizeRequest canvas 480 200
   onExpose canvas $ const (updateCanvas canvas)
+
+  window `on` keyPressEvent $ tryEvent $ do
+         "space" <- eventKeyName
+         liftIO $ do
+           (w, h) <- widgetGetSize canvas
+           widgetQueueDrawArea canvas 0 0 w h
 
   widgetShowAll window
 
