@@ -50,7 +50,7 @@ instance Genotype Building SkylineParameters Render where
       let gen = liftIO (randomRIO (0.1, 1.0))
       dimensions <- (,) <$> gen <*> gen
       rgba <- (,,,) <$> gen <*> gen <*> gen <*> gen
-      pos <- gen
+      pos <- liftIO (randomRIO (0.1, 7.9))
       return $ Building dimensions rgba pos
 
     mutate params b = do

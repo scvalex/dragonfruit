@@ -1,7 +1,10 @@
 module Main where
 
+import Common
 import Control.Concurrent.MVar
+import Control.Monad
 import Graphics.Rendering.Cairo
+import qualified Graphics.Rendering.Cairo.Matrix as M
 import Graphics.UI.Gtk
 
 import Instances ()
@@ -74,27 +77,42 @@ mutateOnce stateMV = do
 drawSkyline :: Int -> Int -> State -> Render ()
 drawSkyline width height (sky, params) = do
   setupCanvas width height
-  visualize params sky
+  inUserCoordinates width height $ visualize params sky
 
 setupCanvas :: Int -> Int -> Render ()
-setupCanvas wWidth wHeight = do
-  let width   = 10
-      height  = 10
-      scaleX  = realToFrac wWidth  / width
-      scaleY  = realToFrac wHeight / height
-
-  setLineCap LineCapRound
-  setLineJoin LineJoinRound
-  setLineWidth $ 4 / max scaleX scaleY
-
-  -- Set up user coordinates
-  scale scaleX scaleY
-  -- Centre origin
-  translate (width / 2) (height / 2)
-
-  -- white canvas
+setupCanvas devWidth devHeight = do
+  -- White-out canvas
   setSourceRGBA 1.0 1.0 1.0 1.0
   paint
 
-keepState :: Render t -> Render ()
-keepState render = save >> render >> restore
+  when debug $ keepState (boundingBox devWidth devHeight)
+
+boundingBox :: Int -> Int -> Render ()
+boundingBox devWidth devHeight = do
+  inUserCoordinates devWidth devHeight $ do
+    setSourceRGBA 0.0 0.0 0.0 1.0
+    rectangle 0.1 0.1 7.8 0.8
+    stroke
+
+inUserCoordinates :: Int -> Int -> Render a -> Render a
+inUserCoordinates devWidth devHeight render =
+    keepState $ do
+      -- Switch to user coordinates
+      let scaleX  = realToFrac devWidth / 8.0
+          scaleY  = realToFrac devHeight
+
+      setLineCap LineCapRound
+      setLineJoin LineJoinRound
+      setLineWidth $ 4 / max scaleX scaleY
+
+      -- Set up user coordinates
+      scale scaleX scaleY
+      -- Positive y-axis upwards
+      translate 0.0 1.0
+      let flipY = M.Matrix 1 0 0 (-1) 0 0
+      transform flipY
+
+      render
+
+keepState :: Render t -> Render t
+keepState render = save >> render >>= \x -> restore >> return x
