@@ -11,11 +11,11 @@ import Instances ()
 import Types
 import Skyline
 
-data State = State { getCurrent :: (MVar Skyline, Frame)
+data State = State { getCurrent :: VBox
                    , getParams  :: SkylineParameters
-                   , getCurrentContainer :: Frame
+                   , getCanvases :: [(DrawingArea, Frame, MVar Skyline)]
                    , getHistoryContainer :: VBox
-                   , getNextHandler :: MVar (ConnectId DrawingArea) }
+                   , getNextHandlers :: MVar [(ConnectId DrawingArea)] }
 
 main :: IO ()
 main = do
@@ -41,38 +41,55 @@ main = do
   scrolledWindowAddWithViewport mainScroller evoBox
   set evoBox [containerBorderWidth := 5]
 
-  (canvas, canvasF) <- newFramedCanvas
-  containerAdd evoBox canvasF
-  set evoBox [boxChildPacking canvasF := PackNatural]
-
   let params = SkylineParameters { getMutationRate = 0.05 }
-  sky <- spawn params
-  skyMV <- newMVar sky
+  skies <- forM [1..3] $ \_ -> spawn params
+  (choiceBox, canvases) <- newChoiceBox params skies
+  containerAdd evoBox choiceBox
+  set evoBox [boxChildPacking choiceBox := PackNatural]
+
   nextHandlerMV <- newEmptyMVar
-  stateMV <- newMVar $ State { getCurrent = (skyMV, canvasF)
+  stateMV <- newMVar $ State { getCurrent = choiceBox
                              , getParams  = params
-                             , getCurrentContainer = canvasF
+                             , getCanvases = canvases
                              , getHistoryContainer = evoBox
-                             , getNextHandler = nextHandlerMV }
+                             , getNextHandlers = nextHandlerMV }
 
-  onExpose canvas $ const (updateCanvas canvas skyMV params)
-
-  hdlNext <- canvas `on` buttonPressEvent $ tryEvent $ do
-               LeftButton <- eventButton
-               liftIO $ newSaveCanvas stateMV
-  putMVar nextHandlerMV hdlNext
+  nextHdls <- forM canvases $ \(canvas, _, _) -> do
+    canvas `on` buttonPressEvent $ tryEvent $ do
+      LeftButton <- eventButton
+      liftIO $ newSaveChoice stateMV canvas
+  putMVar nextHandlerMV nextHdls
 
   widgetShowAll window
 
   mainGUI
 
-newFramedCanvas :: IO (DrawingArea, Frame)
-newFramedCanvas = do
+newChoiceBox :: SkylineParameters
+             -> [Skyline]
+             -> IO (VBox, [(DrawingArea, Frame, MVar Skyline)])
+newChoiceBox params skies = do
+  choiceBox <- vBoxNew True 1
+
+  canvases <- forM skies $ \sky -> do
+    (canvas, canvasF, skyMV) <- newFramedCanvas params sky
+    containerAdd choiceBox canvasF
+    return (canvas, canvasF, skyMV)
+
+  return (choiceBox, canvases)
+
+newFramedCanvas :: SkylineParameters
+                -> Skyline
+                -> IO (DrawingArea, Frame, MVar Skyline)
+newFramedCanvas params sky = do
   canvas <- drawingAreaNew
   canvasF <- frameNew
   containerAdd canvasF canvas
   widgetSetSizeRequest canvas 200 100
-  return (canvas, canvasF)
+
+  skyMV <- newMVar sky
+  onExpose canvas $ const (updateCanvas canvas skyMV params)
+
+  return (canvas, canvasF, skyMV)
 
 updateCanvas :: DrawingArea -> MVar Skyline -> SkylineParameters -> IO Bool
 updateCanvas canvas skyMV params = do
@@ -85,35 +102,47 @@ updateCanvas canvas skyMV params = do
 mutateOnce :: MVar Skyline -> SkylineParameters -> IO ()
 mutateOnce skyMV params = modifyMVar_ skyMV $ mutate params
 
-newSaveCanvas :: MVar State -> IO ()
-newSaveCanvas stateMV = do
-  s@State { getCurrent = (skyMV, canvasF)
+newSaveChoice :: MVar State -> DrawingArea -> IO ()
+newSaveChoice stateMV selectedCanvas = do
+  s@State { getCurrent = choiceBox
           , getParams  = params
+          , getCanvases = canvases
           , getHistoryContainer = evoBox
-          , getNextHandler = nextHandlerMV } <- takeMVar stateMV
-  nextHandler <- takeMVar nextHandlerMV
-  signalDisconnect nextHandler
+          , getNextHandlers = nextHandlersMV } <- takeMVar stateMV
+  nextHandlers <- takeMVar nextHandlersMV
+  mapM signalDisconnect nextHandlers
 
-  containerRemove evoBox canvasF
-  containerAdd evoBox canvasF
-  set evoBox [boxChildPacking canvasF := PackNatural]
+  containerRemove evoBox choiceBox
 
-  (newCanvas, newCanvasF) <- newFramedCanvas
-  containerAdd evoBox newCanvasF
-  set evoBox [boxChildPacking newCanvasF := PackNatural]
-  sky <- readMVar skyMV
-  newSkyMV <- newMVar sky
-  onExpose newCanvas $ const (updateCanvas newCanvas newSkyMV params)
+  selectedSkyMV <- newEmptyMVar
+  forM canvases $ \(canvas, canvasF, skyMV) -> do
+    if canvas == selectedCanvas
+      then do
+        containerRemove choiceBox canvasF
+        containerAdd evoBox canvasF
+        set evoBox [boxChildPacking canvasF := PackNatural]
+        putMVar selectedSkyMV =<< readMVar skyMV
+      else do
+        widgetDestroy canvasF
+        widgetDestroy canvas
 
-  hdlNext <- newCanvas `on` buttonPressEvent $ tryEvent $ do
-               LeftButton <- eventButton
-               liftIO $ newSaveCanvas stateMV
-  putMVar nextHandlerMV hdlNext
+  selectedSky <- takeMVar selectedSkyMV
+  skies <- forM [1..3 :: Int] $ \_ -> mutate params selectedSky
 
-  mutateOnce newSkyMV params
+  (newChoice, newCanvases) <- newChoiceBox params skies
+  containerAdd evoBox newChoice
+  set evoBox [boxChildPacking newChoice := PackNatural]
+
+  nextHdls <- forM newCanvases $ \(canvas, _, skyMV) -> do
+    mutateOnce skyMV params
+    canvas `on` buttonPressEvent $ tryEvent $ do
+      LeftButton <- eventButton
+      liftIO $ newSaveChoice stateMV canvas
+  putMVar nextHandlersMV nextHdls
+
   widgetShowAll evoBox
 
-  putMVar stateMV s{getCurrent = (newSkyMV, newCanvasF)}
+  putMVar stateMV s{getCurrent = newChoice, getCanvases = newCanvases}
 
 drawSkyline :: Int -> Int -> Skyline -> SkylineParameters -> Render ()
 drawSkyline width height sky params = do
